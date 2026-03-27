@@ -142,6 +142,9 @@ class ProblemaFEM1DEvolutivo:
     def resolver(self, u0, dt, n_pasos, condiciones):
         u = u0.copy()
 
+        soluciones = [u.copy()]
+        tiempos = [0.0]
+
         for paso in range(n_pasos):
             A_t = self.M + dt * self.A
             B_t = self.M @ u + dt * self.B
@@ -150,8 +153,13 @@ class ProblemaFEM1DEvolutivo:
 
             u = np.linalg.solve(A_t, B_t)
 
+            # guardar cada ciertos pasos
+            if paso % 5 == 0:
+                soluciones.append(u.copy())
+                tiempos.append((paso + 1) * dt)
+
         self.u = u
-        return u
+        return u, soluciones, tiempos
 
     def imprimir(self):
         for i, x in enumerate(self.malla.nodos):
@@ -187,7 +195,25 @@ if __name__ == "__main__":
     dt = 0.01
     n_pasos = 100
 
-    u_final = problema.resolver(u0, dt, n_pasos, condiciones)
+    u_final, soluciones, tiempos = problema.resolver(
+        u0, dt, n_pasos, condiciones
+    )
 
     print("\nSolución final:")
     problema.imprimir()
+
+
+    import matplotlib.pyplot as plt
+
+    plt.figure()
+
+    for i, u_sol in enumerate(soluciones):
+        plt.plot(malla.nodos, u_sol, label=f"t={tiempos[i]:.2f}")
+
+    plt.xlabel("x")
+    plt.ylabel("u(x,t)")
+    plt.title("Evolución temporal FEM 1D")
+    plt.grid(True)
+    plt.legend()
+
+    plt.show()
