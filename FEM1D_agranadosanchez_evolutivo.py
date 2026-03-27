@@ -72,17 +72,6 @@ class Elemento1D:
             [-1.0, 1.0]
         ])
 
-    def matriz_reaccion_local(self, c):
-        M = np.zeros((2, 2))
-        N = [FuncionesForma.N1, FuncionesForma.N2]
-
-        for a in range(2):
-            for b in range(2):
-                M[a, b] = c * self.h * integrar_gauss_2p(
-                    lambda e: N[a](e) * N[b](e)
-                )
-        return M
-
     def matriz_masa_local(self):
         M = np.zeros((2, 2))
         N = [FuncionesForma.N1, FuncionesForma.N2]
@@ -128,11 +117,10 @@ class ProblemaFEM1DEvolutivo:
             elem = Elemento1D(x1, x2)
 
             K = elem.matriz_rigidez_local()
-            R = elem.matriz_reaccion_local(self.c)
             M = elem.matriz_masa_local()
             b = elem.vector_cargas_local(self.f)
 
-            self.A[np.ix_([i, j], [i, j])] += K + R
+            self.A[np.ix_([i, j], [i, j])] += self.c * K
             self.M[np.ix_([i, j], [i, j])] += M
             self.B[[i, j]] += b
 
@@ -143,7 +131,6 @@ class ProblemaFEM1DEvolutivo:
         for nodo, valor, tipo in condiciones:
             if tipo == TipoCondicion.ESENCIAL:
                 A[nodo, :] = 0
-                A[:, nodo] = 0
                 A[nodo, nodo] = 1
                 B[nodo] = valor
 
@@ -156,8 +143,8 @@ class ProblemaFEM1DEvolutivo:
         u = u0.copy()
 
         for paso in range(n_pasos):
-            A_t = self.M / dt + self.A
-            B_t = self.B + (self.M / dt) @ u
+            A_t = self.M + dt * self.A
+            B_t = self.M @ u + dt * self.B
 
             A_t, B_t = self.aplicar_cc(A_t, B_t, condiciones)
 
@@ -176,11 +163,11 @@ class ProblemaFEM1DEvolutivo:
 if __name__ == "__main__":
 
     a = 0.0
-    b = 10.0
-    n_elem = 50
+    b = 1.0
+    n_elem = 100
 
     c = 1.0
-    f = lambda x: 2 * x
+    f = lambda x: np.cos(2 * np.pi * x)
 
     malla = Malla1D(a, b, n_elem)
 
@@ -188,17 +175,17 @@ if __name__ == "__main__":
     problema.ensamblar()
 
     # condición inicial
-    u0 = np.zeros(malla.n_nodos)
+    u0 = malla.nodos**2
 
     # condiciones de contorno
     condiciones = [
         (0, 0.0, TipoCondicion.ESENCIAL),
-        (malla.n_nodos - 1, 1.0, TipoCondicion.NATURAL)
+        (malla.n_nodos - 1, 1.0, TipoCondicion.ESENCIAL)
     ]
 
     # parámetros temporales
-    dt = 0.1
-    n_pasos = 50
+    dt = 0.01
+    n_pasos = 100
 
     u_final = problema.resolver(u0, dt, n_pasos, condiciones)
 
