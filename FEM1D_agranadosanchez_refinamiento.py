@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 from enum import Enum, auto
 
 
@@ -33,7 +34,7 @@ class FuncionesForma:
 
 class Malla1D:
     def __init__(self, nodos):
-        self.nodos = np.array(sorted(nodos))
+        self.nodos = np.array(sorted(nodos), dtype=float)
         self.elementos = [(i, i + 1) for i in range(len(self.nodos) - 1)]
 
     @property
@@ -116,9 +117,9 @@ class ProblemaFEM1D:
     def aplicar_condiciones_contorno(self, condiciones):
         for nodo, valor, tipo in condiciones:
             if tipo == TipoCondicion.ESENCIAL:
-                self.A[nodo, :] = 0
-                self.A[:, nodo] = 0
-                self.A[nodo, nodo] = 1
+                self.A[nodo, :] = 0.0
+                self.A[:, nodo] = 0.0
+                self.A[nodo, nodo] = 1.0
                 self.B[nodo] = valor
             else:
                 self.B[nodo] += valor
@@ -144,7 +145,6 @@ class ProblemaFEM1D:
         max_e = np.max(errores)
 
         indices = [i for i, e in enumerate(errores) if e > alpha * max_e]
-
         return indices, errores
 
     def refinar_malla(self, indices):
@@ -164,39 +164,95 @@ class ProblemaFEM1D:
         return Malla1D(nuevos_nodos)
 
 
-# =========================
-# MAIN ADAPTATIVO
-# =========================
-
-if __name__ == "__main__":
-
-    a, b = 0.0, 10.0
-    f = lambda x: 2.0 * x
-
-    # malla inicial (coarse)
-    nodos = np.linspace(a, b, 5)
+def resolver_fem_1d(nodos, f, condiciones):
+    """
+    Resuelve el problema FEM en una malla dada y devuelve (x, u).
+    """
     malla = Malla1D(nodos)
+    problema = ProblemaFEM1D(malla, f)
+    problema.ensamblar_sistema()
+    problema.aplicar_condiciones_contorno(condiciones)
+    u = problema.resolver()
+    return malla.nodos.copy(), u.copy()
 
-    condiciones = [
-        (0, 0.0, TipoCondicion.ESENCIAL),
-        (len(nodos)-1, 0.0, TipoCondicion.ESENCIAL)
-    ]
 
-    for iteracion in range(5):
-        print(f"\n===== ITERACION {iteracion} =====")
+def adaptativo_1d(nodos_iniciales, f, alpha=0.5, max_iter=5):
+    """
+    Ejecuta refinamiento adaptativo y guarda el historial:
+    historial[k] = (x_k, u_k)
+    """
+    historial = []
+    malla = Malla1D(nodos_iniciales)
+
+    for _ in range(max_iter):
+        condiciones = [
+            (0, 0.0, TipoCondicion.ESENCIAL),
+            (malla.n_nodos - 1, 0.0, TipoCondicion.ESENCIAL)
+        ]
 
         problema = ProblemaFEM1D(malla, f)
         problema.ensamblar_sistema()
         problema.aplicar_condiciones_contorno(condiciones)
-        problema.resolver()
+        u = problema.resolver()
 
-        print("Solución:", problema.u)
+        historial.append((malla.nodos.copy(), u.copy()))
 
-        indices, errores = problema.elementos_a_refinar(alpha=0.5)
+        indices, errores = problema.elementos_a_refinar(alpha=alpha)
 
-        print("Errores:", errores)
-        print("Refinar elementos:", indices)
+        if len(indices) == 0:
+            break
 
         malla = problema.refinar_malla(indices)
 
-        print("Nuevos nodos:", malla.nodos)
+    return historial
+
+
+# =========================
+# MAIN + GRAFICA
+# =========================
+
+if __name__ == "__main__":
+    a, b = 0.0, 1.0
+    f = lambda x: np.exp(-100.0 * (x - 0.5)**2)
+
+    # referencia "fina"
+    x_ref = np.linspace(a, b, 2000)
+    condiciones_ref = [
+        (0, 0.0, TipoCondicion.ESENCIAL),
+        (len(x_ref) - 1, 0.0, TipoCondicion.ESENCIAL)
+    ]
+    x_ref, u_ref = resolver_fem_1d(x_ref, f, condiciones_ref)
+
+    # historial adaptativo
+    historial = adaptativo_1d(
+        nodos_iniciales=np.linspace(a, b, 3),
+        f=f,
+        alpha=0.5,
+        max_iter=5
+    )
+
+    fig, axes = plt.subplots(2, 3, figsize=(12, 6))
+    axes = axes.flatten()
+
+    for k, (xk, uk) in enumerate(historial):
+        ax = axes[k]
+
+        # solución FEM de la iteración k
+        ax.plot(xk, uk, '-o', markersize=4, label='FEM adaptativo')
+
+        # referencia fina
+        ax.plot(x_ref, u_ref, label='Referencia fina')
+
+        # nodos de la malla en rojo sobre el eje x
+        ax.plot(xk, np.zeros_like(xk), 'r.', markersize=6, label='Nodos')
+
+        ax.set_title(f'Iteración {k}')
+        ax.set_xlim(a, b)
+        ax.grid(False)
+
+    # apagar ejes sobrantes
+    for j in range(len(historial), len(axes)):
+        axes[j].axis('off')
+
+    plt.tight_layout()
+    plt.show()

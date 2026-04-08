@@ -217,7 +217,7 @@ if __name__ == "__main__":
 
     # Parámetros del problema
     a = 0.0
-    b = 1.0
+    b = 10.0
     n_elem = 100          # número de elementos
     c = 1.0               # coeficiente de difusión
     f = lambda x: np.cos(2 * np.pi * x)   # término fuente
@@ -230,11 +230,11 @@ if __name__ == "__main__":
     problema.ensamblar()
 
     # Condición inicial
-    u0 = np.cos(2 * np.pi * malla.nodos)
+    u0 = malla.nodos**2
 
     # Condiciones de contorno (Dirichlet en ambos extremos)
     condiciones = [
-        (0, 1.0, TipoCondicion.ESENCIAL),
+        (0, 0.0, TipoCondicion.ESENCIAL),
         (malla.n_nodos - 1, 1.0, TipoCondicion.ESENCIAL)
     ]
 
