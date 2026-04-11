@@ -202,15 +202,27 @@ class ProblemaFEM1D:
         for nodo, valor, tipo in condiciones:
 
             if tipo == TipoCondicion.ESENCIAL:
-                # Anulamos fila y columna del nodo
+                # # Anulamos fila y columna del nodo
+                # self.A[nodo, :] = 0.0
+                # self.A[:, nodo] = 0.0
+
+                # # Ponemos 1 en la diagonal para fijar el valor
+                # self.A[nodo, nodo] = 1.0
+
+                # # Fijamos el valor en el segundo miembro
+                # self.B[nodo] = valor
+
+                # Guardamos la columna original (excepto la diagonal) antes de modificarla
+                columna = self.A[:, nodo].copy()
+                # Anulamos la fila y la columna
                 self.A[nodo, :] = 0.0
                 self.A[:, nodo] = 0.0
-
-                # Ponemos 1 en la diagonal para fijar el valor
+                # Diagonal = 1
                 self.A[nodo, nodo] = 1.0
-
-                # Fijamos el valor en el segundo miembro
-                self.B[nodo] = valor
+                # Ajustamos el vector B: restamos g * columna (excepto el término diagonal)
+                self.B[:] -= valor * columna
+                # Fijamos el valor en la posición del nodo
+                self.B[nodo] = valor    
 
             elif tipo == TipoCondicion.NATURAL:
                 # La condición natural entra sumando al vector B
