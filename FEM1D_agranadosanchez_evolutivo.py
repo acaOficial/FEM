@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation, FFMpegWriter, PillowWriter
 from enum import Enum, auto
 import sys
+import os
 
 # ----------------------------------------------------------------------
 # Clases y funciones del FEM 1D evolutivo (originales, ligeramente modificadas)
@@ -219,8 +220,8 @@ if __name__ == "__main__":
     a = 0.0
     b = 10.0
     n_elem = 100          # número de elementos
-    c = 1.0               # coeficiente de difusión
-    f = lambda x: np.cos(2 * np.pi * x)   # término fuente
+    c = 0.5               # coeficiente de difusión
+    f = lambda x: x  # término fuente
 
     # Construcción de la malla
     malla = Malla1D(a, b, n_elem)
@@ -234,18 +235,37 @@ if __name__ == "__main__":
 
     # Condiciones de contorno (Dirichlet en ambos extremos)
     condiciones = [
-        (0, 0.0, TipoCondicion.ESENCIAL),
-        (malla.n_nodos - 1, 1.0, TipoCondicion.ESENCIAL)
+        (0, u0[0], TipoCondicion.ESENCIAL),
+        (malla.n_nodos - 1, u0[-1], TipoCondicion.ESENCIAL)
     ]
 
     # Parámetros temporales
     dt = 0.01
-    n_pasos = 100
+    n_pasos = 1000
 
     # Resolver guardando TODOS los pasos (para el video fluido)
     u_final, soluciones, tiempos = problema.resolver(
         u0, dt, n_pasos, condiciones, guardar_todos=True
     )
+
+    carpeta = "soluciones_temporales"
+    os.makedirs(carpeta, exist_ok=True)
+
+    # Guardar cada solución temporal en un archivo .txt
+    for i, (sol, t) in enumerate(zip(soluciones, tiempos)):
+        nombre_archivo = os.path.join(carpeta, f"solucion_t_{i:04d}.txt")
+        
+        datos = np.column_stack((malla.nodos, sol))
+        
+        np.savetxt(
+            nombre_archivo,
+            datos,
+            header=f"t = {t:.6f}\nx    u(x,t)",
+            comments=""
+        )
+
+    print(f"Soluciones temporales guardadas en la carpeta: {carpeta}")
+
 
     print("\nSolución final (primeros y últimos nodos):")
     problema.imprimir()
