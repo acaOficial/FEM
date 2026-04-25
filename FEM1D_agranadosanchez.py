@@ -198,24 +198,20 @@ class ProblemaFEM1D:
         self.ensamblar_vector_global()
 
     def aplicar_condiciones_contorno(self, condiciones):
-        # Recorremos todas las condiciones de contorno
         for nodo, valor, tipo in condiciones:
 
             if tipo == TipoCondicion.ESENCIAL:
-                # Anulamos fila y columna del nodo
+                self.B -= self.A[:, nodo] * valor
+
                 self.A[nodo, :] = 0.0
                 self.A[:, nodo] = 0.0
 
-                # Ponemos 1 en la diagonal para fijar el valor
                 self.A[nodo, nodo] = 1.0
-
-                # Fijamos el valor en el segundo miembro
                 self.B[nodo] = valor
 
             elif tipo == TipoCondicion.NATURAL:
-                # La condición natural entra sumando al vector B
                 self.B[nodo] += valor
-
+    
     def resolver(self):
         # Resolvemos el sistema lineal
         self.u = np.linalg.solve(self.A, self.B)
