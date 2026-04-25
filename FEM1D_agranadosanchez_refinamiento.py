@@ -199,6 +199,19 @@ def adaptativo_1d(nodos_iniciales, f, alpha=0.5, max_iter=5):
 
         indices, errores = problema.elementos_a_refinar(alpha=alpha)
 
+        print(f"\nIteración {_}")
+        print("Errores por elemento:")
+        for e, eta in enumerate(errores):
+            i, j = malla.elementos[e]
+            print(
+                f"Elemento {e}: "
+                f"[{malla.nodos[i]:.6f}, {malla.nodos[j]:.6f}] "
+                f"eta = {eta:.6e}"
+            )
+
+        print("Elementos refinados:", indices)
+
+
         if len(indices) == 0:
             break
 
