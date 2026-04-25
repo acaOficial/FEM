@@ -393,6 +393,8 @@ class ProblemaFEM2D:
                 continue
 
             # Aplicar condición esencial
+            self.B -= self.A[:, nodo] * g_val
+
             self.A[nodo, :] = 0.0
             self.A[:, nodo] = 0.0
             self.A[nodo, nodo] = 1.0
@@ -536,9 +538,14 @@ if __name__ == "__main__":
     # Exportar solución
     exportar_solucion(output_file, malla, u)
 
-    # Opcional: mostrar diferencias con solución exacta (si se conoce)
-    u_exacta = lambda x: np.exp(-10 * (x[0]-0.5)**2 - 10 * (x[1]-0.5)**2)
-    print("Diferencias en los nodos (aprox - exacta):")
+
+    print("Solución FEM en los nodos:")
     for i, (x, y) in enumerate(malla.nodes):
-        diff = u[i] - u_exacta((x, y))
-        print(f"Nodo {i}: ({x:.3f}, {y:.3f}) -> {diff:.6e}")
+        print(f"Nodo {i}: ({x:.3f}, {y:.3f}) -> u = {u[i]:.6e}")
+        
+    # Opcional: mostrar diferencias con solución exacta (si se conoce)
+    # u_exacta = lambda x: np.exp(-10 * (x[0]-0.5)**2 - 10 * (x[1]-0.5)**2)
+    # print("Diferencias en los nodos (aprox - exacta):")
+    # for i, (x, y) in enumerate(malla.nodes):
+    #     diff = u[i] - u_exacta((x, y))
+    #     print(f"Nodo {i}: ({x:.3f}, {y:.3f}) -> {diff:.6e}")
