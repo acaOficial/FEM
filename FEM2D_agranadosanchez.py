@@ -507,12 +507,12 @@ if __name__ == "__main__":
 
     # Definir mapeo de etiquetas y funciones de contorno (igual que en el código del colega)
     BoundaryMapper = {
-        7: TipoCondicion.DIRICHLET,
-        8: TipoCondicion.NEUMANN
+        5: TipoCondicion.DIRICHLET,
+        6: TipoCondicion.NEUMANN
     }
     BoundaryValues = {
-        7: lambda x: np.exp(-10 * (x[0]-0.5)**2 - 10 * (x[1]-0.5)**2),
-        8: lambda x: -20*(x[1]-0.5)*np.exp(-10*((x[0]-0.5)**2 + (x[1]-0.5)**2))
+        5: lambda x: np.exp(-10 * (x[0]-0.5)**2 - 10 * (x[1]-0.5)**2),
+        6: lambda x: -20*(x[1]-0.5)*np.exp(-10*((x[0]-0.5)**2 + (x[1]-0.5)**2))
     }
 
     # Parámetros de la EDP
