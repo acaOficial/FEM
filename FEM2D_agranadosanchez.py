@@ -1,5 +1,3 @@
-# REVISADO
-
 import numpy as np
 from enum import Enum, auto
 
@@ -11,14 +9,14 @@ class TipoCondicion(Enum):
     NEUMANN = auto()
 
 # ------------------------------------------------------------
-# Integración numérica en el triángulo de referencia (3 puntos)
+# Integración numérica en el triángulo de referencia
 # ------------------------------------------------------------
 def integrar_triangulo_3p(func):
     """
     Integra una función sobre el triángulo de referencia de vértices (0,0), (1,0), (0,1)
     usando la regla de 3 puntos de Gauss (orden 2).
     """
-    # Puntos de Gauss en coordenadas baricéntricas (xi, eta)
+    # Puntos de Gauss 
     puntos = [
         (1/6, 2/3),   # (1/6, 2/3) en (xi, eta)
         (1/6, 1/6),
@@ -32,7 +30,7 @@ def integrar_triangulo_3p(func):
     return resultado
 
 # ------------------------------------------------------------
-# Integración numérica en la arista de referencia [0,1] (2 puntos)
+# Integración numérica en la arista de referencia [0,1]
 # ------------------------------------------------------------
 def integrar_linea_2p(func):
     """
@@ -100,7 +98,7 @@ class FuncionesFormaTriangulo:
                 FuncionesFormaTriangulo.grad_N3()]
 
 # ------------------------------------------------------------
-# Funciones de forma para la arista de referencia [0,1] (elemento lineal 1D)
+# Funciones de forma para la arista de referencia [0,1]
 # ------------------------------------------------------------
 class FuncionesFormaArista:
     @staticmethod
@@ -126,9 +124,9 @@ class Malla2D:
                   donde los ids de nodos son 1-indexados (como en Gmsh).
         edges: lista de tuplas (id_arista, tag, [id_nodo1, id_nodo2])
         """
-        self.nodes = nodes                # lista de (x,y)
-        self.elements = elements          # lista de (id, [n1,n2,n3])
-        self.edges = edges                # lista de (id, tag, [n1,n2])
+        self.nodes = nodes            
+        self.elements = elements     
+        self.edges = edges           
         self.n_nodos = len(nodes)
         self.n_elementos = len(elements)
 
@@ -139,7 +137,6 @@ class Malla2D:
     def obtener_nodos_elemento(self, elem_idx):
         """Devuelve coordenadas de los 3 nodos del elemento (en orden local)"""
         _, node_ids = self.elements[elem_idx]
-        # node_ids son 1-indexados -> pasar a 0-indexado
         coords = [self.nodes[i-1] for i in node_ids]
         return coords
 
@@ -167,11 +164,10 @@ class Elemento2D:
         coords_nodos: lista de 3 tuplas (x,y) ordenadas según el elemento local:
                       1: (0,0), 2: (1,0), 3: (0,1) en el de referencia.
         """
-        self.coords = np.array(coords_nodos)  # shape (3,2)
+        self.coords = np.array(coords_nodos)
 
     def jacobiano(self):
         """Calcula la matriz jacobiana de la transformación (xi,eta) -> (x,y)"""
-        # Coordenadas de los nodos
         x1, y1 = self.coords[0]
         x2, y2 = self.coords[1]
         x3, y3 = self.coords[2]
@@ -193,12 +189,11 @@ class Elemento2D:
         J = self.jacobiano()
         detJ = self.det_jacobiano()
         invJ = np.linalg.inv(J)
-        # Gradientes en coordenadas físicas: grad_phi = invJ^T * grad_phi_hat
-        grad_ref = FuncionesFormaTriangulo.todos_gradientes()  # lista de arrays (2,)
+        grad_ref = FuncionesFormaTriangulo.todos_gradientes()
         grad_fis = [invJ.T @ g for g in grad_ref]
 
         K_local = np.zeros((3, 3))
-        area = 0.5 * detJ   # área del triángulo físico
+        area = 0.5 * detJ
         for a in range(3):
             for b in range(3):
                 K_local[a, b] = np.dot(grad_fis[a], grad_fis[b]) * area
@@ -213,10 +208,6 @@ class Elemento2D:
         detJ = self.det_jacobiano()
         area = 0.5 * detJ
 
-        # La integral sobre el triángulo de Ni*Nj se calcula numéricamente
-        # pero para elementos lineales existe fórmula exacta:
-        # Para funciones de forma lineales, integral Ni*Nj dOmega = (area/12)*(1+delta_ij)
-        # Sin embargo, usamos integración numérica por generalidad.
         M_local = np.zeros((3, 3))
         N_funcs = FuncionesFormaTriangulo.todas_funciones()
 
@@ -228,7 +219,7 @@ class Elemento2D:
                 integral = integrar_triangulo_3p(
                     lambda xi, eta: integrando(xi, eta, a, b)
                 )
-                M_local[a, b] = c * integral * detJ   # detJ porque el integrando está en ref
+                M_local[a, b] = c * integral * detJ
         return M_local
 
     def vector_cargas_local(self, f):
@@ -240,7 +231,6 @@ class Elemento2D:
         N_funcs = FuncionesFormaTriangulo.todas_funciones()
         detJ = self.det_jacobiano()
         J = self.jacobiano()
-        # Punto base (primer nodo) para la transformación afín
         base = self.coords[0]
 
         def mapear_a_fisico(xi, eta):
@@ -256,7 +246,7 @@ class Elemento2D:
         return b_local
 
 # ------------------------------------------------------------
-# Clase para un elemento de arista (condiciones de Neumann)
+# Clase para un elemento de arista
 # ------------------------------------------------------------
 class ElementoArista1D:
     def __init__(self, nodo_izq, nodo_der, funcion_neumann):
@@ -289,7 +279,7 @@ class ElementoArista1D:
         return b_local
 
 # ------------------------------------------------------------
-# Clase que ensambla y resuelve el problema FEM
+# Clase que ensambla y resuelve
 # ------------------------------------------------------------
 class ProblemaFEM2D:
     def __init__(self, malla, f, c, boundary_mapper, boundary_values):
@@ -319,9 +309,8 @@ class ProblemaFEM2D:
             M_local = elem.matriz_reaccion_local(self.c)
             A_local = K_local + M_local
 
-            # Obtener índices globales de los nodos del elemento (0-indexados)
             _, node_ids = self.malla.elements[elem_idx]
-            ids = [i-1 for i in node_ids]   # pasar a 0-indexado
+            ids = [i-1 for i in node_ids]
 
             # Ensamblaje
             for a, ia in enumerate(ids):
@@ -346,41 +335,31 @@ class ProblemaFEM2D:
         - Dirichlet: fija el valor en el nodo (anula fila/columna y pone 1 en diagonal)
         - Neumann: añade contribución al vector B sobre las aristas correspondientes.
         """
-        # Procesar condiciones de Neumann primero (aportan a B)
         aristas_neumann = self.malla.obtener_aristas_por_tipo(TipoCondicion.NEUMANN,
                                                               self.boundary_mapper)
         for edge in aristas_neumann:
-            _, tag, node_ids = edge   # node_ids son 1-indexados
-            # Obtener función g_N
+            _, tag, node_ids = edge
             g_func = self.boundary_values.get(tag)
             if g_func is None:
                 continue
-            # Coordenadas de los dos nodos de la arista
             n1 = node_ids[0] - 1
             n2 = node_ids[1] - 1
             coord1 = self.malla.obtener_coordenadas_nodo(n1)
             coord2 = self.malla.obtener_coordenadas_nodo(n2)
             elem_arista = ElementoArista1D(coord1, coord2, g_func)
             b_local = elem_arista.vector_cargas_local()
-            # Ensamblar en B
             self.B[n1] += b_local[0]
             self.B[n2] += b_local[1]
 
-        # Procesar condiciones de Dirichlet (modifican A y B)
         aristas_dirichlet = self.malla.obtener_aristas_por_tipo(TipoCondicion.DIRICHLET,
                                                                 self.boundary_mapper)
-        # Recolectar nodos con Dirichlet (puede haber repeticiones)
         nodos_dirichlet = set()
         for edge in aristas_dirichlet:
             _, tag, node_ids = edge
             for nid in node_ids:
-                nodos_dirichlet.add(nid - 1)   # 0-indexado
+                nodos_dirichlet.add(nid - 1)
 
-        # Para cada nodo Dirichlet, fijar el valor según la función correspondiente
-        # Nota: Si un nodo pertenece a varias aristas con distintas funciones,
-        # se toma la primera encontrada. En mallas bien definidas no debería ocurrir.
         for nodo in nodos_dirichlet:
-            # Buscar la función g asociada a este nodo (podría venir de cualquiera de sus aristas)
             g_val = None
             for edge in aristas_dirichlet:
                 _, tag, node_ids = edge
@@ -411,7 +390,7 @@ class ProblemaFEM2D:
         return self.u
 
 # ------------------------------------------------------------
-# Funciones de lectura de malla en formato Gmsh .msh (versión 2.2)
+# Funciones de lectura de malla
 # ------------------------------------------------------------
 def leer_malla_gmsh(archivo_msh):
     """
@@ -424,7 +403,6 @@ def leer_malla_gmsh(archivo_msh):
     with open(archivo_msh, 'r') as f:
         lines = f.readlines()
 
-    # Buscar sección $Nodes
     nodes = []
     i = 0
     while i < len(lines):
@@ -437,13 +415,11 @@ def leer_malla_gmsh(archivo_msh):
                 node_id = int(parts[0])
                 x = float(parts[1])
                 y = float(parts[2])
-                # z = float(parts[3])  # ignoramos z
                 nodes.append((x, y))
                 i += 1
             break
         i += 1
 
-    # Buscar sección $Elements
     elements = []
     edges = []
     i = 0
@@ -456,14 +432,13 @@ def leer_malla_gmsh(archivo_msh):
                 parts = lines[i].strip().split()
                 elem_id = int(parts[0])
                 elem_type = int(parts[1])
-                if elem_type == 1:   # línea (arista)
-                    # Formato: id tipo num_tags tag ... nodos
+                if elem_type == 1:
                     num_tags = int(parts[2])
-                    tag = int(parts[3])  # asumimos que el primer tag es el de condición
+                    tag = int(parts[3])
                     node1 = int(parts[3 + num_tags])
                     node2 = int(parts[4 + num_tags])
                     edges.append((elem_id, tag, [node1, node2]))
-                elif elem_type == 2:   # triángulo lineal
+                elif elem_type == 2:
                     num_tags = int(parts[2])
                     node1 = int(parts[3 + num_tags])
                     node2 = int(parts[4 + num_tags])
@@ -476,63 +451,50 @@ def leer_malla_gmsh(archivo_msh):
     return nodes, elements, edges
 
 # ------------------------------------------------------------
-# Exportación de solución en formato similar al del colega
+# Exportación de solución en formato
 # ------------------------------------------------------------
 def exportar_solucion(archivo_salida, malla, u):
     """Exporta la solución nodal a un archivo .inp con formato simple."""
     with open(archivo_salida, 'w') as f:
-        # Cabecera
         f.write(f"{malla.n_nodos} {malla.n_elementos} 1 0 0\n")
-        # Coordenadas
         for i, (x, y) in enumerate(malla.nodes, start=1):
             f.write(f"{i} {x} {y} 0.0\n")
-        # Conectividad
         for elem_id, node_ids in malla.elements:
             n1, n2, n3 = node_ids
             f.write(f"{elem_id} 1 tri {n1} {n2} {n3}\n")
-        # Cabecera de variable
         f.write("1 1\n")
         f.write("u, sol\n")
-        # Valores nodales
         for i, valor in enumerate(u, start=1):
             f.write(f"{i} {valor}\n")
 
-# ------------------------------------------------------------
-# Ejemplo de uso (main)
-# ------------------------------------------------------------
+
 if __name__ == "__main__":
-    # Archivos de entrada/salida
-    mesh_file = "malla.msh"
+    mesh_file = "cuadrado.msh"
     output_file = "solucion_aca.inp"
 
-    # Definir mapeo de etiquetas y funciones de contorno (igual que en el código del colega)
     BoundaryMapper = {
-        5: TipoCondicion.DIRICHLET,
-        6: TipoCondicion.NEUMANN
+        8: TipoCondicion.DIRICHLET,
+        10: TipoCondicion.DIRICHLET,
+        7: TipoCondicion.DIRICHLET,
+        9: TipoCondicion.NEUMANN
     }
     BoundaryValues = {
-        5: lambda x: np.exp(-10 * (x[0]-0.5)**2 - 10 * (x[1]-0.5)**2),
-        6: lambda x: -20*(x[1]-0.5)*np.exp(-10*((x[0]-0.5)**2 + (x[1]-0.5)**2))
+        7: lambda x: x[0]**2,
+        8: lambda x: 1+ x[1]**2,
+        9: lambda x: 2,
+        10: lambda x: x[1]**2
     }
 
-    # Parámetros de la EDP
-    c = 0.0
-    f = lambda x: -80*np.exp(-5 * (1-2*x[0]+2*x[0]**2-2*x[1]+2*x[1]**2)) * (2-5*x[0]+5*x[0]**2-5*x[1]+5*x[1]**2)
+    c = 1.0
+    f = lambda x: x[0]**2 + x[1]**2 - 4
 
-    # Leer malla
     nodes, elements, edges = leer_malla_gmsh(mesh_file)
     malla = Malla2D(nodes, elements, edges)
 
-    # Crear problema FEM
     problema = ProblemaFEM2D(malla, f, c, BoundaryMapper, BoundaryValues)
-
-    # Ensamblar sistema
     problema.ensamblar_sistema()
-
-    # Aplicar condiciones de contorno (incluye Neumann y Dirichlet)
     problema.aplicar_condiciones_contorno()
 
-    # Resolver
     u = problema.resolver()
 
     # Exportar solución
@@ -543,9 +505,8 @@ if __name__ == "__main__":
     for i, (x, y) in enumerate(malla.nodes):
         print(f"Nodo {i}: ({x:.3f}, {y:.3f}) -> u = {u[i]:.6e}")
         
-    # Opcional: mostrar diferencias con solución exacta (si se conoce)
-    # u_exacta = lambda x: np.exp(-10 * (x[0]-0.5)**2 - 10 * (x[1]-0.5)**2)
-    # print("Diferencias en los nodos (aprox - exacta):")
-    # for i, (x, y) in enumerate(malla.nodes):
-    #     diff = u[i] - u_exacta((x, y))
-    #     print(f"Nodo {i}: ({x:.3f}, {y:.3f}) -> {diff:.6e}")
+    u_exacta = lambda x: x[0]**2 + x[1]**2 
+    print("Diferencias en los nodos (aprox - exacta):")
+    for i, (x, y) in enumerate(malla.nodes):
+        diff = u[i] - u_exacta((x, y))
+        print(f"Nodo {i}: ({x:.3f}, {y:.3f}) -> {diff:.6e}")

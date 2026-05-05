@@ -1,5 +1,3 @@
-# REVISADO
-
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation, FFMpegWriter, PillowWriter
@@ -8,7 +6,7 @@ import sys
 import os
 
 # ----------------------------------------------------------------------
-# Clases y funciones del FEM 1D evolutivo (originales, ligeramente modificadas)
+# Clases y funciones del FEM 1D evolutivo
 # ----------------------------------------------------------------------
 
 class TipoCondicion(Enum):
@@ -172,7 +170,6 @@ def exportar_video(malla, soluciones, tiempos, archivo_salida="evolucion.mp4", f
     fig, ax = plt.subplots(figsize=(8, 5))
     x = malla.nodos
 
-    # Límites fijos del eje Y (para que no varíe la escala)
     y_min = min(np.min(sol) for sol in soluciones)
     y_max = max(np.max(sol) for sol in soluciones)
     margen = 0.1 * (y_max - y_min) if (y_max - y_min) != 0 else 0.1
@@ -233,17 +230,17 @@ if __name__ == "__main__":
     # Condición inicial
     u0 = malla.nodos**2
 
-    # Condiciones de contorno (Dirichlet en ambos extremos)
+    # Condiciones de contorno
     condiciones = [
         (0, u0[0], TipoCondicion.ESENCIAL),
         (malla.n_nodos - 1, u0[-1], TipoCondicion.ESENCIAL)
     ]
 
     # Parámetros temporales
-    dt = 0.01
-    n_pasos = 1000
+    dt = 0.1
+    n_pasos = 100
 
-    # Resolver guardando TODOS los pasos (para el video fluido)
+    # Resuelve guardando TODOS los pasos
     u_final, soluciones, tiempos = problema.resolver(
         u0, dt, n_pasos, condiciones, guardar_todos=True
     )
@@ -251,7 +248,7 @@ if __name__ == "__main__":
     carpeta = "soluciones_temporales"
     os.makedirs(carpeta, exist_ok=True)
 
-    # Guardar cada solución temporal en un archivo .txt
+    # Guarda cada solución temporal en un archivo .txt
     for i, (sol, t) in enumerate(zip(soluciones, tiempos)):
         nombre_archivo = os.path.join(carpeta, f"solucion_t_{i:04d}.txt")
         
@@ -271,10 +268,8 @@ if __name__ == "__main__":
     problema.imprimir()
 
     # Exportar video (MP4)
-    # Si no tienes ffmpeg, cambia formato='gif' y la extensión a .gif
     exportar_video(malla, soluciones, tiempos, archivo_salida="evolucion_fem.gif", fps=20, formato='gif')
 
-    # Opcional: mostrar una gráfica con algunas curvas
     plt.figure(figsize=(8,5))
     for i in range(0, len(soluciones), max(1, len(soluciones)//10)):
         plt.plot(malla.nodos, soluciones[i], label=f"t={tiempos[i]:.2f}")

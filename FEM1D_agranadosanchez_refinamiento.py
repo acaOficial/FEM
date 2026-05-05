@@ -221,7 +221,7 @@ def adaptativo_1d(nodos_iniciales, f, alpha=0.5, max_iter=5):
 
 
 # =========================
-# MAIN + GRAFICA
+# MAIN
 # =========================
 
 if __name__ == "__main__":
@@ -255,15 +255,12 @@ if __name__ == "__main__":
 
         # referencia fina
         ax.plot(x_ref, u_ref, label='Referencia fina')
-
-        # nodos de la malla en rojo sobre el eje x
         ax.plot(xk, np.zeros_like(xk), 'r.', markersize=6, label='Nodos')
 
         ax.set_title(f'Iteración {k}')
         ax.set_xlim(a, b)
         ax.grid(False)
 
-    # apagar ejes sobrantes
     for j in range(len(historial), len(axes)):
         axes[j].axis('off')
 
